@@ -30,9 +30,15 @@ def spectral_flux(s):
         prevSpectrum = s[i - 1]
         spectrum = s[i]
 
-        flux = abs(spectrum) - abs(prevSpectrum)
-
         # If rectify is specified, only return positive values
+        flux = 0
+    # TODO: chequear para seniales complejas
+        if(len(spectrum)):
+            for j in range(0,len(spectrum)):
+                diff = abs(spectrum[j]) - abs(prevSpectrum[j])
+                flux += diff
+#        else:
+#        flux = abs(spectrum) - abs(prevSpectrum)
         if flux < 0:
             flux = 0
 
@@ -51,8 +57,8 @@ def spectral_flux(s):
 # Part 0 - Load sound
 
 # 0.1 Load sound
-file_path = './testBeat.wav'
-data, sample_rate = envelope.read_wav(file_path);
+file_path = './src/testBeat.wav'
+sample_rate, data = wavfile.read(file_path);
 
 print("samples: ", len(data))
 
@@ -124,9 +130,51 @@ plt.ylabel('Amplitude')
 plt.title('Signal and its Envelope')
 plt.show()
 
-# Part 4 - Peak picking
-# 4.1 Estimate Tempo
-# 4.1.1 Autocorrelation (formula 5 de [4])
-# 4.1.2 Max TPS from 4.1.1 will be target tempo
+# Part 4 - Estimate Tempo
+# 4.1 Autocorrelation (formula 5 de [4])
 
-# Part 5 - Find beat based on the peaks
+# gaussian window
+tau0 = 0.5 # seconds
+sigma = 1.4 # octaves
+def w(tau):
+    return np.exp(-0.5*(np.log2(tau/tau0)/sigma))
+
+# autocorrelation
+def AC(tau):
+    shift = int(tau*sample_rate)
+    return w(tau)*np.sum(np.multiply(spectrum,np.roll(spectrum,shift)), axis=0)
+
+# 4.2 Max TPS from 4.1.1 will be target tempo
+
+taus = np.arange(0.1,2,0.05)
+autocorrelations = [0]*len(taus)
+max_ac = 0 # index
+for i in range(len(taus)):
+    autocorrelations[i] = AC(taus[i])
+    if (autocorrelations[i] > autocorrelations[max_ac]):
+        max_ac = i
+
+estimated_tempo = taus[max_ac]
+print(estimated_tempo)
+
+# Part 5 - Peak picking based on estimated tempo
+
+# based on estimated tempo, there must be at least n_beats beats
+track_duration = n_samples/sample_rate
+n_beats = track_duration * estimated_tempo
+
+# 5.1 - calculate (1) (Beat Tracking by Dynamic Programming) for every beats combination
+# single objective function
+def F(dt,tau):
+    return -(np.log(dt/tau)**2)
+# error function C for a combination {t_i} of beats (los indices)
+# TODO: definir el alfa, creo que esta en el paper
+alfa = 1    # <----
+def C(beats):
+    sum_errors = 0
+    for i in range(1,len(beats)):
+        sum_errors += F(beats[i]/sample_rate,estimated_tempo)
+    sum(spectrum[beats],axis=0) + alfa*sum_errors
+
+# TODO: detectar todos los beats (agarrar todos los maximos locales y chau)
+# 5.2 - pick beats from greater C in 5.1
