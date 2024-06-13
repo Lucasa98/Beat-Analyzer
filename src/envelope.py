@@ -1,3 +1,5 @@
+""" Forked from https://github.com/tesserato/envelope """
+
 ### signal-envelope ###
 import numpy as np
 import wave
