@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import scipy.signal as sp
 import numpy as np
 
-file_path = 'tp/120.mp3'
+file_path = 'src/120.mp3'
 
 def export_to_file(onset_times):
     file_name_no_extension, _ = os.path.splitext(file_path)
@@ -91,26 +91,27 @@ def visualize_onsets(x,sr):
     
     bpm = round(bpm, 0) if bpm > 0 else 0  # Round BPM 
     
-    main_key = getMainKey(x,sr)
+    
     # Add labels, title, and legend
     plt.xlabel('Time (s)')
     plt.ylabel('Amplitude')
-    plt.title(f'Waveform with Onset Times (Average BPM: {bpm}, Key: {main_key})')
+    plt.title(f'Waveform with Onset Times (Average BPM: {bpm})')
     plt.legend()
     plt.show()
     
 def hz_to_note_name(hz):
+    if hz == 0:
+        return None
     note_number = lbs.hz_to_midi(hz)
     note_name = lbs.midi_to_note(note_number)
     return note_name
 
-    
-def getMainKey(x,sr):
+def get_main_key(x, sr):
     x = lbs.to_mono(x)
-
+    
     # Perform pitch detection using the YIN algorithm
     pitches, magnitudes = lbs.core.piptrack(y=x, sr=sr)
-
+    
     # Extract the pitch frequencies
     pitch_frequencies = []
     for t in range(pitches.shape[1]):
@@ -120,37 +121,15 @@ def getMainKey(x,sr):
             pitch_frequencies.append(pitch)
 
     # Convert detected pitch frequencies to note names
-    note_names = [hz_to_note_name(f) for f in pitch_frequencies]
-
-    # Count occurrences of each note name
-    note_count = collections.Counter(note_names)
-
-    # Define keys and their corresponding notes
-    keys = {
-        'C Major': ['C', 'D', 'E', 'F', 'G', 'A', 'B'],
-        'G Major': ['G', 'A', 'B', 'C', 'D', 'E', 'F#'],
-        'D Major': ['D', 'E', 'F#', 'G', 'A', 'B', 'C#'],
-        'A Major': ['A', 'B', 'C#', 'D', 'E', 'F#', 'G#'],
-        'E Major': ['E', 'F#', 'G#', 'A', 'B', 'C#', 'D#'],
-        'B Major': ['B', 'C#', 'D#', 'E', 'F#', 'G#', 'A#'],
-        'F# Major': ['F#', 'G#', 'A#', 'B', 'C#', 'D#', 'E#'],
-        'C# Major': ['C#', 'D#', 'E#', 'F#', 'G#', 'A#', 'B#'],
-        'A Minor': ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
-        'E Minor': ['E', 'F#', 'G', 'A', 'B', 'C', 'D'],
-        'B Minor': ['B', 'C#', 'D', 'E', 'F#', 'G', 'A'],
-        'F# Minor': ['F#', 'G#', 'A', 'B', 'C#', 'D', 'E'],
-        'C# Minor': ['C#', 'D#', 'E', 'F#', 'G#', 'A', 'B'],
-        'G# Minor': ['G#', 'A#', 'B', 'C#', 'D#', 'E', 'F#'],
-        'D# Minor': ['D#', 'E#', 'F#', 'G#', 'A#', 'B', 'C#'],
-        'A# Minor': ['A#', 'B#', 'C#', 'D#', 'E#', 'F#', 'G#'],
-    }
-    
-    dominant_key = max(keys, key=lambda k: sum(note_count[n] for n in keys[k]))
-    return dominant_key
+    note_names = [hz_to_note_name(f) for f in pitch_frequencies if hz_to_note_name(f) is not None]
+    avg_note = sum(pitch_frequencies) / len(pitch_frequencies)
+    avg_note_name = hz_to_note_name(avg_note)
+    return avg_note_name
     
 def main():
     # Load the audio file
     x, sr = lbs.load(file_path)
+    main_key = get_main_key(x,sr)
     # Add noise to the signal
     x_noisy = add_noise(x)
     # Filter the signal
@@ -159,8 +138,10 @@ def main():
     x_noisy = normalize(x_noisy)
     # Visualize onsets
     visualize_onsets(x_noisy,sr)
+    
+    print('Avg key:', main_key)
 
-    sd.play(x_noisy, sr)
-    sd.wait()
+    # sd.play(x_noisy, sr)
+    # sd.wait()
 
 main()
