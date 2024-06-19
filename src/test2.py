@@ -102,7 +102,6 @@ def normalize(x):
 
     Args:
         x: señal
-
     Returns: señal normalizada
     """
     # Obtener minimo y maximo
@@ -159,10 +158,10 @@ def hz_to_note_name(hz):
 def get_main_key(x, sr):
     x = lbs.to_mono(x)
 
-    # Perform pitch detection using the YIN algorithm
+    # Usar el algoritmos de yin para detectas los tonos
     pitches, magnitudes = lbs.core.piptrack(y=x, sr=sr)
 
-    # Extract the pitch frequencies
+    # Extrar las frecuencias de los tonos
     pitch_frequencies = []
     for t in range(pitches.shape[1]):
         index = magnitudes[:, t].argmax()
@@ -170,26 +169,34 @@ def get_main_key(x, sr):
         if pitch > 0:
             pitch_frequencies.append(pitch)
 
-    # Convert detected pitch frequencies to note names
+    # Convertir las frecuencias detectadas a nombres de notas
     note_names = [hz_to_note_name(f) for f in pitch_frequencies if hz_to_note_name(f) is not None]
+
+    # Calcular tono promedio (en frecuencia)
     avg_note = sum(pitch_frequencies) / len(pitch_frequencies)
+    # Convertir frecuencia promedio a nombre de la nota
     avg_note_name = hz_to_note_name(avg_note)
+
     return avg_note_name
 
 def main():
-    # Cargar archivo
+    # Generación de la Señal de prueba
+    ## Cargar archivo
     x, sr = lbs.load(file_path)
-    # Detectar nota
-    main_key = get_main_key(x,sr)
-    # Añadir ruido
+    ## Añadir ruido
     x_noisy = add_noise(x)
-    # Filtro butterworth pasa bajo
+
+    # Procesamiento de la señal
+    ## Detección de beats e Identificación de tempo
+    ### Filtro butterworth pasa bajo
     x_noisy = filter(x_noisy,sr)
-    # Normalizar la señal
+    ### Normalizar la señal
     x_noisy = normalize(x_noisy)
-    # Visualizar beats
+    ### Visualizar beats
     visualize_onsets(x_noisy,sr)
 
+    ## Identificación de tonalidad
+    main_key = get_main_key(x,sr)
     print('Avg key:', main_key)
 
     # reproducir audio ruidoso
